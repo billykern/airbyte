@@ -75,6 +75,12 @@ class S3V2Specification :
             "{\"examples\":[\"{date}\",\"{date:yyyy_MM}\",\"{timestamp}\",\"{part_number}\",\"{sync_id}\"],\"order\":9}"
     )
     override val fileNamePattern: String? = null
+
+    @get:JsonSchemaInject(
+        json =
+            "{\"title\":\"Enable Checksums\",\"description\":\"Enable checksums for multipart uploads to ensure data integrity. Required for buckets with Object Lock enabled.\",\"default\":false,\"order\":10}"
+    )
+    val checksumEnabled: Boolean = false
 }
 
 @Singleton

@@ -9,6 +9,7 @@ import aws.sdk.kotlin.runtime.auth.credentials.DefaultChainCredentialsProvider
 import aws.sdk.kotlin.runtime.auth.credentials.StaticCredentialsProvider
 import aws.sdk.kotlin.runtime.auth.credentials.StsAssumeRoleCredentialsProvider
 import aws.sdk.kotlin.services.s3.model.CopyObjectRequest
+import aws.sdk.kotlin.services.s3.model.ChecksumAlgorithm
 import aws.sdk.kotlin.services.s3.model.CreateMultipartUploadRequest
 import aws.sdk.kotlin.services.s3.model.Delete
 import aws.sdk.kotlin.services.s3.model.DeleteObjectRequest
@@ -30,6 +31,7 @@ import io.airbyte.cdk.load.command.aws.AwsAssumeRoleCredentials
 import io.airbyte.cdk.load.command.object_storage.ObjectStorageUploadConfigurationProvider
 import io.airbyte.cdk.load.command.s3.S3BucketConfiguration
 import io.airbyte.cdk.load.command.s3.S3BucketConfigurationProvider
+import io.airbyte.cdk.load.command.s3.S3ClientConfiguration
 import io.airbyte.cdk.load.command.s3.S3ClientConfigurationProvider
 import io.airbyte.cdk.load.file.object_storage.ObjectStorageClient
 import io.airbyte.cdk.load.file.object_storage.RemoteObject
@@ -60,6 +62,7 @@ interface S3Client : ObjectStorageClient<S3Object>
 class S3KotlinClient(
     private val client: aws.sdk.kotlin.services.s3.S3Client,
     val bucketConfig: S3BucketConfiguration,
+    private val clientConfig: S3ClientConfiguration = S3ClientConfiguration(),
 ) : S3Client {
     private val log = KotlinLogging.logger {}
 
@@ -158,12 +161,15 @@ class S3KotlinClient(
             this.bucket = bucketConfig.s3BucketName
             this.key = key
             this.metadata = metadata
+            if (clientConfig.objectLockChecksumEnabled) {
+                this.checksumAlgorithm = ChecksumAlgorithm.Sha256
+            }
         }
         val response = client.createMultipartUpload(request)
 
         log.debug { "Starting multipart upload for $key (uploadId=${response.uploadId})" }
 
-        return S3StreamingUpload(client, bucketConfig, response)
+        return S3StreamingUpload(client, bucketConfig, response, clientConfig)
     }
 }
 
@@ -262,6 +268,7 @@ class S3ClientFactory(
         return S3KotlinClient(
             s3SdkClient,
             bucketConfig.s3BucketConfiguration,
+            s3ClientConfig?.s3ClientConfiguration ?: S3ClientConfiguration(),
         )
     }
 }

@@ -4,6 +4,7 @@
 
 package io.airbyte.cdk.load.file.s3
 
+import aws.sdk.kotlin.services.s3.model.ChecksumAlgorithm
 import aws.sdk.kotlin.services.s3.model.CompleteMultipartUploadRequest
 import aws.sdk.kotlin.services.s3.model.CompletedMultipartUpload
 import aws.sdk.kotlin.services.s3.model.CompletedPart
@@ -12,6 +13,7 @@ import aws.sdk.kotlin.services.s3.model.UploadPartRequest
 import aws.smithy.kotlin.runtime.content.ByteStream
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings
 import io.airbyte.cdk.load.command.s3.S3BucketConfiguration
+import io.airbyte.cdk.load.command.s3.S3ClientConfiguration
 import io.airbyte.cdk.load.file.object_storage.StreamingUpload
 import io.airbyte.cdk.load.util.setOnce
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -23,6 +25,7 @@ class S3StreamingUpload(
     private val client: aws.sdk.kotlin.services.s3.S3Client,
     private val bucketConfig: S3BucketConfiguration,
     private val response: CreateMultipartUploadResponse,
+    private val clientConfig: S3ClientConfiguration = S3ClientConfiguration(),
 ) : StreamingUpload<S3Object> {
     private val log = KotlinLogging.logger {}
     private val uploadedParts = ConcurrentHashSet<CompletedPart>()
@@ -38,6 +41,9 @@ class S3StreamingUpload(
                 key = response.key
                 body = ByteStream.fromBytes(part)
                 this.partNumber = index
+                if (clientConfig.objectLockChecksumEnabled) {
+                    this.checksumAlgorithm = ChecksumAlgorithm.Sha256
+                }
             }
             val uploadResponse = client.uploadPart(request)
             uploadedParts.add(

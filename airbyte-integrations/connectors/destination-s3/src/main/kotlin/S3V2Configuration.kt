@@ -21,6 +21,8 @@ import io.airbyte.cdk.load.command.object_storage.ObjectStorageUploadConfigurati
 import io.airbyte.cdk.load.command.object_storage.ObjectStorageUploadConfigurationProvider
 import io.airbyte.cdk.load.command.s3.S3BucketConfiguration
 import io.airbyte.cdk.load.command.s3.S3BucketConfigurationProvider
+import io.airbyte.cdk.load.command.s3.S3ClientConfiguration
+import io.airbyte.cdk.load.command.s3.S3ClientConfigurationProvider
 import io.micronaut.context.annotation.Factory
 import jakarta.inject.Singleton
 import java.io.OutputStream
@@ -48,15 +50,21 @@ data class S3V2Configuration<T : OutputStream>(
     val maxMemoryRatioReservedForParts: Double = DEFAULT_MAX_MEMORY_RESERVED_FOR_PARTS,
     val objectSizeBytes: Long = 200L * 1024 * 1024,
     val partSizeBytes: Long = 20L * 1024 * 1024,
+    val checksumEnabled: Boolean = false,
 ) :
     DestinationConfiguration(),
     AWSAccessKeyConfigurationProvider,
     AWSArnRoleConfigurationProvider,
     S3BucketConfigurationProvider,
+    S3ClientConfigurationProvider,
     ObjectStoragePathConfigurationProvider,
     ObjectStorageFormatConfigurationProvider,
     ObjectStorageUploadConfigurationProvider,
-    ObjectStorageCompressionConfigurationProvider<T>
+    ObjectStorageCompressionConfigurationProvider<T> {
+    
+    override val s3ClientConfiguration: S3ClientConfiguration
+        get() = S3ClientConfiguration(objectLockChecksumEnabled = checksumEnabled)
+}
 
 @Singleton
 class S3V2ConfigurationFactory(private val destinationCatalog: DestinationCatalog) :
@@ -69,6 +77,7 @@ class S3V2ConfigurationFactory(private val destinationCatalog: DestinationCatalo
             objectStoragePathConfiguration = pojo.toObjectStoragePathConfiguration(),
             objectStorageFormatConfiguration = pojo.toObjectStorageFormatConfiguration(),
             objectStorageCompressionConfiguration = pojo.toCompressionConfiguration(),
+            checksumEnabled = pojo.checksumEnabled,
             maxMemoryRatioReservedForParts =
                 if (destinationCatalog.streams.any { it.isFileBased }) {
                     FILE_DEFAULT_MAX_MEMORY_RESERVED_FOR_PARTS

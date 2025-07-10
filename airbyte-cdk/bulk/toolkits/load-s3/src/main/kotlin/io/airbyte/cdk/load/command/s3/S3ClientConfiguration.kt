@@ -14,4 +14,7 @@ interface S3ClientConfigurationProvider {
     val s3ClientConfiguration: S3ClientConfiguration
 }
 
-data class S3ClientConfiguration(val useLegacyJavaClient: Boolean = false)
+data class S3ClientConfiguration(
+    val useLegacyJavaClient: Boolean = false,
+    val objectLockChecksumEnabled: Boolean = false
+)
